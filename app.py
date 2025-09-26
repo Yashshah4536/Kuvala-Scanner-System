@@ -1,101 +1,90 @@
-from flask import Flask, render_template, request, jsonify
-import qrcode
+from flask import Flask, render_template, request
+import pandas as pd
 import os
-from openpyxl import Workbook, load_workbook
-from datetime import datetime
-import json
+import qrcode
 
 app = Flask(__name__)
-QR_FOLDER = os.path.join("static", "qrcodes")
-EXCEL_FILE = "data.xlsx"
 
-# Ensure QR folder exists
-os.makedirs(QR_FOLDER, exist_ok=True)
+# Paths for Excel files
+GENERATOR_SHEET = "generated_data.xlsx"
+SCANNER_SHEET = "scanned_data.xlsx"
 
-# Initialize Excel if not exists
-if not os.path.exists(EXCEL_FILE):
-    wb = Workbook()
-    ws = wb.active
-    ws.append(["Timestamp", "ID", "Name", "Email", "Phone", "QR Filename", "Scanned Data"])
-    wb.save(EXCEL_FILE)
+# Make sure "static" folder exists
+if not os.path.exists("static"):
+    os.makedirs("static")
 
-# ------------------ QR Generator ------------------ #
+
 @app.route("/", methods=["GET", "POST"])
-def index():
+def home():
     if request.method == "POST":
         user_id = request.form["user_id"]
         name = request.form["name"]
         email = request.form["email"]
         phone = request.form["phone"]
 
-        # QR Data as JSON
-        qr_dict = {"ID": user_id, "Name": name, "Email": email, "Phone": phone}
-        qr_data = json.dumps(qr_dict)
+        # Save to generator Excel (aligned columns)
+        new_entry = pd.DataFrame([[user_id, name, phone, email]],
+                                 columns=["ID", "Name", "Number", "Email"])
+        if os.path.exists(GENERATOR_SHEET):
+            old = pd.read_excel(GENERATOR_SHEET)
+            df = pd.concat([old, new_entry], ignore_index=True)
+        else:
+            df = new_entry
+        df.to_excel(GENERATOR_SHEET, index=False)
 
-        filename = f"{user_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.png"
-        filepath = os.path.join(QR_FOLDER, filename)
+        # Generate QR code with details as plain text
+        qr_data = f"ID: {user_id}, Name: {name}, Phone: {phone}, Email: {email}"
+        qr_img = qrcode.make(qr_data)
+        qr_path = os.path.join("static", "qrcode.png")
+        qr_img.save(qr_path)
 
-        # Generate QR code
-        qr = qrcode.QRCode(
-            version=1, error_correction=qrcode.constants.ERROR_CORRECT_H,
-            box_size=10, border=4
-        )
-        qr.add_data(qr_data)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
-        img.save(filepath)
+        return render_template("index.html", qr_generated=True, qr_file="qrcode.png", qr_data=qr_data)
 
-        # Save details in Excel
-        wb = load_workbook(EXCEL_FILE)
-        ws = wb.active
-        ws.append([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user_id, name, email, phone, filename, ""])
-        wb.save(EXCEL_FILE)
+    return render_template("index.html", qr_generated=False)
 
-        return render_template("index.html", qr_image=filepath, user_id=user_id, name=name)
 
-    return render_template("index.html", qr_image=None)
-
-# ------------------ QR Scanner Page ------------------ #
 @app.route("/scan")
 def scan():
     return render_template("scan.html")
 
-# ------------------ Save Scanned Data ------------------ #
+
 @app.route("/save_scan", methods=["POST"])
 def save_scan():
-    scanned_data = request.json.get("data", "")
+    scanned_text = request.form["data"]
 
-    user_id = name = email = phone = ""
-
-    # Try to parse JSON
+    # Parse the scanned text
     try:
-        data_dict = json.loads(scanned_data)
-        user_id = data_dict.get("ID", "")
-        name = data_dict.get("Name", "")
-        email = data_dict.get("Email", "")
-        phone = data_dict.get("Phone", "")
-    except:
-        # Fallback: parse as plain text
-        for line in scanned_data.splitlines():
-            if line.startswith("ID:"):
-                user_id = line.replace("ID:", "").strip()
-            elif line.startswith("Name:"):
-                name = line.replace("Name:", "").strip()
-            elif line.startswith("Email:"):
-                email = line.replace("Email:", "").strip()
-            elif line.startswith("Phone:"):
-                phone = line.replace("Phone:", "").strip()
+        parts = scanned_text.split(", ")
+        parsed = {}
+        for part in parts:
+            key, value = part.split(": ", 1)
+            parsed[key.strip()] = value.strip()
 
-    # Save in Excel
-    wb = load_workbook(EXCEL_FILE)
-    ws = wb.active
-    ws.append([
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        user_id, name, email, phone, "", scanned_data
-    ])
-    wb.save(EXCEL_FILE)
+        user_id = parsed.get("ID", "")
+        name = parsed.get("Name", "")
+        phone = parsed.get("Phone", "")
+        email = parsed.get("Email", "")
 
-    return jsonify({"status": "success", "message": "Scanned data saved."})
+        # Save parsed data into structured Excel (same structure as generator)
+        new_entry = pd.DataFrame([[user_id, name, phone, email]],
+                                 columns=["ID", "Name", "Number", "Email"])
+    except Exception as e:
+        # fallback: save raw text if parsing fails
+        new_entry = pd.DataFrame([[scanned_text]], columns=["Scanned Data"])
+
+    # Append to Excel
+    if os.path.exists(SCANNER_SHEET):
+        old = pd.read_excel(SCANNER_SHEET)
+        df = pd.concat([old, new_entry], ignore_index=True)
+    else:
+        df = new_entry
+    df.to_excel(SCANNER_SHEET, index=False)
+
+    return "Saved"
+
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+#https://script.google.com/macros/s/AKfycbxvozJfoIxPRMA9g6g9XohH8ufNBM3BqE-nlLOaHshpe8dK710Urxw73X-gcanriboE3g/exec

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QR Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: #f9f9f9;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      width: 300px;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+    }
+    button {
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #218838;
+    }
+    img {
+      margin-top: 20px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      background: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>QR Code Generator</h1>
+  <form method="POST">
+    <input type="text" name="user_id" placeholder="Enter ID" required>
+    <input type="text" name="name" placeholder="Enter Name" required>
+    <input type="email" name="email" placeholder="Enter Email" required>
+    <input type="text" name="phone" placeholder="Enter Phone" required>
+    <button type="submit">Generate QR</button>
+  </form>
+
+  {% if qr_generated %}
+    <h2>Generated QR:</h2>
+    <img src="{{ url_for('static', filename=qr_file) }}" alt="QR Code">
+  {% endif %}
+
+  <a href="{{ url_for('scan') }}"><button>Go to Scanner</button></a>
+</body>
+</html>
