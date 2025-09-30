@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan QR Code</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .back-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            transition: background 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: #764ba2;
+        }
+        
+        #reader {
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .result-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .result-section.active {
+            display: block;
+        }
+        
+        .result-data {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            word-break: break-all;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #dc3545;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #764ba2;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .scan-count {
+            text-align: center;
+            color: #666;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-btn">← Back to Home</a>
+        
+        <div class="header">
+            <h1>📷 Scan QR Code</h1>
+            <p>Point your camera at a QR code to scan</p>
+        </div>
+        
+        <div id="reader"></div>
+        
+        <div id="result" class="result-section">
+            <h3>Scanned Data:</h3>
+            <div class="result-data" id="result-data"></div>
+            <button onclick="saveScan()">💾 Save to Database</button>
+            <div id="message"></div>
+        </div>
+        
+        <div class="scan-count" id="scan-count">Total scans saved: 0</div>
+    </div>
+
+    <script>
+        let lastScannedData = '';
+        let scanCount = 0;
+        
+        // Initialize QR scanner
+        const html5QrCode = new Html5Qrcode("reader");
+        
+        // Start scanning
+        html5QrCode.start(
+            { facingMode: "environment" },
+            {
+                fps: 10,
+                qrbox: { width: 250, height: 250 }
+            },
+            onScanSuccess,
+            onScanFailure
+        ).catch(err => {
+            console.error("Error starting scanner:", err);
+            document.getElementById('message').innerHTML = 
+                '<div class="error-message">Camera access denied or not available</div>';
+        });
+        
+        function onScanSuccess(decodedText, decodedResult) {
+            if (decodedText !== lastScannedData) {
+                lastScannedData = decodedText;
+                document.getElementById('result-data').textContent = decodedText;
+                document.getElementById('result').classList.add('active');
+                
+                // Auto-save to database
+                saveScan();
+            }
+        }
+        
+        function onScanFailure(error) {
+            // Scanning failures are normal, don't log them
+        }
+        
+        function saveScan() {
+            if (!lastScannedData) {
+                showMessage('No data to save', 'error');
+                return;
+            }
+            
+            fetch('/api/save-scan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    qr_data: lastScannedData,
+                    additional_info: new Date().toLocaleString()
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    scanCount++;
+                    updateScanCount();
+                    showMessage('✓ Scan saved successfully!', 'success');
+                    setTimeout(() => {
+                        lastScannedData = '';
+                        document.getElementById('result').classList.remove('active');
+                        document.getElementById('message').innerHTML = '';
+                    }, 2000);
+                } else {
+                    showMessage('Error: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('Failed to save scan', 'error');
+            });
+        }
+        
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `<div class="${type}-message">${text}</div>`;
+        }
+        
+        function updateScanCount() {
+            fetch('/api/get-scans')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('scan-count').textContent = 
+                            `Total scans saved: ${data.scans.length}`;
+                    }
+                });
+        }
+        
+        // Initial count update
+        updateScanCount();
+    </script>
+</body>
+</html>

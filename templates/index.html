@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Scanner App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        
+        .card-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .card-grid.three-col {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+        
+        .card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            text-decoration: none;
+            color: white;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        .card-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        
+        .card-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .card-description {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        @media (max-width: 600px) {
+            .card-grid, .card-grid.three-col {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 900px) and (min-width: 601px) {
+            .card-grid.three-col {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 QR Scanner</h1>
+        <p class="subtitle">Scan, generate, and manage your QR codes easily</p>
+        
+        <div class="card-grid three-col">
+            <a href="/scan" class="card">
+                <div class="card-icon">📷</div>
+                <div class="card-title">Scan QR Code</div>
+                <div class="card-description">Start scanning QR codes with your camera</div>
+            </a>
+            
+            <a href="/generate" class="card">
+                <div class="card-icon">✨</div>
+                <div class="card-title">Generate QR Code</div>
+                <div class="card-description">Create custom QR codes from text or URLs</div>
+            </a>
+            
+            <a href="/records" class="card">
+                <div class="card-icon">📊</div>
+                <div class="card-title">View Records</div>
+                <div class="card-description">See all scanned QR codes and history</div>
+            </a>
+        </div>
+    </div>
+</body>
+</html>
